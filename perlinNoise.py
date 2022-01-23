@@ -71,8 +71,8 @@ for x in range(TOTAL_CELLS):
         # for each corner; x // sampling rate is one corner, x // sampling rate + 1 is other
 
         # nearest corner for now; x / sampling rate rounded
-        gridx = round(float(x) / SAMPLING_RATE)
-        gridy = round(float(y) / SAMPLING_RATE)
+        gridx = round(float(x+0.1) / SAMPLING_RATE)
+        gridy = round(float(y+0.1) / SAMPLING_RATE)
         # calculate offset vector
         cellx = x - (gridx * SAMPLING_RATE)
         celly = y - (gridy * SAMPLING_RATE)
