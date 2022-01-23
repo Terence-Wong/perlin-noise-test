@@ -10,8 +10,9 @@ canvas = pygame.display.set_mode((1600, 1000))
 TOTAL_CELLS = 50
 SAMPLING_RATE = 10
 GRID_CELLS = TOTAL_CELLS // SAMPLING_RATE
-SEED = 100
-random.seed(SEED)
+SEED = None 
+if SEED:
+    random.seed(SEED)
 
 CELL_OFFSET = 0.70710678118 / SAMPLING_RATE
 
@@ -55,6 +56,22 @@ def drawArrow(a, b):
     pygame.draw.line(canvas, red, a, b, width=ARROW_THICK)
     pygame.draw.circle(canvas, red, b, ARROW_THICK)
 
+def getOffsetVector(x, y, gridx, gridy):
+    # get offset vector by cell units
+    cellx = x - (gridx * SAMPLING_RATE)
+    celly = y - (gridy * SAMPLING_RATE)
+    # scale offset vector
+    return (cellx * CELL_OFFSET, celly * CELL_OFFSET)
+
+# using linear interpolation i think
+def interpolate(a, b, w):
+    if 0.0 > w:
+        return a
+
+    if 1.0 < w:
+        return b 
+
+    return (b - a) * w + a
 
 # generate grid of gradient vectors; 2d array of vector objs
 n = GRID_CELLS + 1
@@ -64,28 +81,45 @@ for i in range(n):
         dir = random.random() * 2 * math.pi  # rad clockwise from north
         gradient_vectors[i][j] = Vector(math.cos(dir), math.sin(dir))
 
-# explicityly define cell values; and calculate cell values
-cell_values = [[0] * TOTAL_CELLS for i in range(TOTAL_CELLS)]
+dot_products = [[[0 for _ in range(4)] for _ in range(TOTAL_CELLS)] for _ in range(TOTAL_CELLS)]
+cell_values = [[0 for _ in range(TOTAL_CELLS)] for _ in range(TOTAL_CELLS)]
 for x in range(TOTAL_CELLS):
     for y in range(TOTAL_CELLS):
         # for each corner; x // sampling rate is one corner, x // sampling rate + 1 is other
+        gridx = [math.floor(float(x) / SAMPLING_RATE), math.ceil(float(x) / SAMPLING_RATE)]
+        gridy = [math.floor(float(y) / SAMPLING_RATE), math.ceil(float(y) / SAMPLING_RATE)]
+
+        for i in range(2):
+            for j in range(2):
+                OV = getOffsetVector(x, y, gridx[i], gridy[j])
+                dot_products[x][y][i+j*2] = (
+                    OV[0] * gradient_vectors[gridx[i]][gridy[j]].x
+                    + OV[1] * gradient_vectors[gridx[i]][gridy[j]].y
+                )
+        
+        # x y position inside sampling square
+        sx = float(x - (gridx[0] * SAMPLING_RATE)) / SAMPLING_RATE 
+        sy = float(y - (gridy[0] * SAMPLING_RATE)) / SAMPLING_RATE
+        x1 = interpolate(dot_products[x][y][0], dot_products[x][y][1], sx)
+        x2 = interpolate(dot_products[x][y][2], dot_products[x][y][3], sx)
+        cell_values[x][y] = interpolate(x1, x2, sy)
 
         # nearest corner for now; x / sampling rate rounded
+        """
         gridx = round(float(x+0.1) / SAMPLING_RATE)
         gridy = round(float(y+0.1) / SAMPLING_RATE)
+        """
         # calculate offset vector
-        cellx = x - (gridx * SAMPLING_RATE)
-        celly = y - (gridy * SAMPLING_RATE)
         """
-        find vector by cell points
-        scale cell point vector accordingly
+        OV = getOffsetVector(x, y, gridx, gridy)
         """
-        offsetV = Vector(cellx * CELL_OFFSET, celly * CELL_OFFSET)
         # calculate dot product and set value
+        """
         cell_values[x][y] = (
-            offsetV.x * gradient_vectors[gridx][gridy].x
-            + offsetV.y * gradient_vectors[gridx][gridy].y
+            OV[0] * gradient_vectors[gridx][gridy].x
+            + OV[1] * gradient_vectors[gridx][gridy].y
         )
+        """
 
 
 exit = False
